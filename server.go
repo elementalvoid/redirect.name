@@ -49,11 +49,21 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.Host, ":")
 	host := parts[0]
 
-	hostname := fmt.Sprintf("_redirect.%s", host)
+	redirectBase := "_redirect"
+	hostname := fmt.Sprintf("%s.%s", redirectBase, host)
 	txt, err := net.LookupTXT(hostname)
 	if err != nil {
 		fallback(w, r, fmt.Sprintf("Could not resolve hostname (%v)", err))
 		return
+	}
+
+	for txtRecordNum := 1;; txtRecordNum++ {
+		hostname := fmt.Sprintf("%s%d.%s", redirectBase, txtRecordNum, host)
+		additionalTxt, err := net.LookupTXT(hostname)
+		if err != nil {
+			break
+		}
+		txt = append(txt, additionalTxt...)
 	}
 
 	redirect, err := getRedirect(txt, r.URL.String())
